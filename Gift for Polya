@@ -1,0 +1,69 @@
+import telebot
+from telebot import types
+
+TOKEN = "8567742074:AAHOzCAlNctGOtKFWzOnaOSaQJQ2u-XjJ8s"
+bot = telebot.TeleBot(TOKEN)
+
+users = {}
+
+questions = [
+    ("Как вам?", [("Выставка", 10), ("Краснодар", 20), ("Ёжики", 40)]),
+    ("Последний фильм?", [("Один дома", 10), ("Поехавшая", 20), ("Пираты", 30)]),
+    ("Первый комплимент:", [("Смешная", 10), ("Умная", 20), ("Милая", 30)])
+    (" На лодочной станции :", [("Прошли мимо", 10), ("Начали встречаться", 20), ("Зубами ударились", 30)])
+("Ты у меня:", [("Смешная", 10), ("Красивая", 20), ("Самая красивая, самая умная, самая смешная, самая спортивная, сама солнечная, самая креативная, самая самая самая лучшая", 50)])
+]
+
+@bot.message_handler(commands=["start"])
+def start(message):
+    users[message.chat.id] = {"step": 0, "score": 0}
+    send_question(message.chat.id)
+
+def send_question(chat_id):
+    step = users[chat_id]["step"]
+
+    if step >= len(questions):
+        finish(chat_id)
+        return
+
+    text, answers = questions[step]
+    markup = types.InlineKeyboardMarkup()
+
+    for label, score in answers:
+        markup.add(types.InlineKeyboardButton(
+            text=label,
+            callback_data=str(score)
+        ))
+
+    bot.send_message(chat_id, text, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: True)
+def handle_answer(call):
+    chat_id = call.message.chat.id
+    score = int(call.data)
+
+    users[chat_id]["score"] += score
+    users[chat_id]["step"] += 1
+
+    bot.answer_callback_query(call.id)
+    send_question(chat_id)
+
+def finish(chat_id):
+    score = users[chat_id]["score"]
+
+    if score <= 80:
+        prize = "🌷 Цветы"
+    elif score <= 150:
+        prize = "🍽️ Ресторан"
+    else:
+        prize = "🌷🍽️ Цветы + ресторан"
+
+    bot.send_message(
+        chat_id,
+        f"🎉 Результат\n\n"
+        f"Очки: {score}\n"
+        f"Твой приз: {prize}\n\n"
+        f"С днём рождения 🎂"
+    )
+
+bot.polling()
